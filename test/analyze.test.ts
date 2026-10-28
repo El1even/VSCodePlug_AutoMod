@@ -78,7 +78,7 @@ test('诊断位置为 0-based 行号', () => {
 test('常见写法不误报（arriving 逻辑块、create、注释）', () => {
   const source = [
     'begin model plant',
-    '! 这是注释',
+    '// 这是注释',
     'begin process P',
     '  integer var_jobs',
     '  load LoadA',

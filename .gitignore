@@ -1,6 +1,7 @@
 node_modules/
 out/
 dist/
+reference/
 .npm-cache/
 *.vsix
 .vscode-test/

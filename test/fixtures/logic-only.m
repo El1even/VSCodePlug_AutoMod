@@ -1,5 +1,5 @@
-! 典型的 AutoMod 逻辑控制程序（.m）：只有逻辑块，没有 begin model 外壳
-! if 不需要 end，用 begin/end 分组
+// 典型的 AutoMod 逻辑控制程序（.m）：只有逻辑块，没有 begin model 外壳
+// if 不需要 end，用 begin/end 分组
 
 begin P_arrive arriving procedure
   move into Q_in

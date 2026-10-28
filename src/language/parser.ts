@@ -37,13 +37,13 @@ export interface BlockNode {
 export interface Statement {
   /** 小写关键字；普通赋值语句为 `=`。 */
   keyword: string;
-  /** 本行全部 token（不含注释）。 */
+  /** 本条语句的 token（不含注释）。 */
   tokens: Token[];
   /** 关键字之后的 token。 */
   args: Token[];
   line: number;
   col: number;
-  /** 所在的最近一层块（含 if/while 等）。 */
+  /** 所在的最近一层块（含 begin 分组块）。 */
   block?: BlockNode;
 }
 
@@ -61,9 +61,7 @@ export interface RawIssue {
 export interface ParsedModel {
   source: string;
   tokens: Token[];
-  /** 所有块（扁平，含 system）。 */
   blocks: BlockNode[];
-  /** 模型级顶层块。 */
   topBlocks: BlockNode[];
   statements: Statement[];
   issues: RawIssue[];
@@ -158,162 +156,228 @@ export function parse(source: string): ParsedModel {
     const identity = node.header ?? node.name.toLowerCase();
     const key = `${scopeId}:${identity}`;
     if (seenNames.has(key)) {
-      issue('AM004', `重复的块名 “${node.name}”`, 'error', {
-        kind: 'identifier',
-        text: node.name,
-        line: node.line,
-        col: node.col,
-        endLine: node.line,
-        endCol: node.col,
-      }, Math.max(node.name.length, 1));
+      issue(
+        'AM004',
+        `重复的块名 “${node.name}”`,
+        'error',
+        {
+          kind: 'identifier',
+          text: node.name,
+          line: node.line,
+          col: node.col,
+          endLine: node.line,
+          endCol: node.col,
+        },
+        Math.max(node.name.length, 1),
+      );
     } else {
       seenNames.add(key);
     }
   };
 
+  /** 块边界标记：begin / end / else / endif 等。 */
+  const isMarker = (token: Token): boolean => {
+    const word = token.text.toLowerCase();
+    return word === 'begin' || word === 'end' || word === 'else' || CLOSING_KEYWORDS.has(word);
+  };
+
+  /**
+   * 处理 `begin`：名字取同一行后续的单词 token，
+   * 因此 `begin P_x arriving procedure` 和 `... then begin` 都能正确处理。
+   * 返回扫描到的下一个位置。
+   */
+  const handleBegin = (lineTokens: Token[], index: number): number => {
+    const first = lineTokens[index];
+    const words: string[] = [];
+    let cursor = index + 1;
+    while (cursor < lineTokens.length) {
+      const token = lineTokens[cursor];
+      if (isMarker(token) || !isWord(token)) {
+        break;
+      }
+      words.push(token.text);
+      cursor += 1;
+    }
+
+    let kind: BlockKind = 'begin';
+    let typeName: string | undefined;
+    let name: string | undefined;
+
+    const firstWord = words[0]?.toLowerCase();
+    if (firstWord === 'model' && words[1]?.toLowerCase() === 'initialization') {
+      // `begin model initialization function`：模型初始化函数，不是模型外壳
+      kind = 'begin';
+      name = 'initialization';
+    } else if (firstWord === 'model') {
+      kind = 'model';
+      name = words[1];
+    } else if (firstWord === 'procedure') {
+      kind = 'procedure';
+      name = words[1];
+    } else {
+      const systemMatch = matchSystemType(words);
+      if (systemMatch) {
+        kind = 'system';
+        typeName = systemMatch.type;
+        let nameIndex = systemMatch.consumed;
+        // 兼容 `begin process system P` 这种把 "system" 也写出来的导出格式
+        if (words[nameIndex]?.toLowerCase() === 'system' && words[nameIndex + 1]) {
+          nameIndex += 1;
+        }
+        name = words[nameIndex];
+      } else {
+        // 逻辑块：`begin P_in arriving procedure`、`begin`（匿名块）等
+        kind = 'begin';
+        name = words[0];
+      }
+    }
+
+    const node: BlockNode = {
+      kind,
+      typeName,
+      name,
+      header: words.length > 0 ? words.join(' ').toLowerCase() : undefined,
+      line: first.line,
+      col: first.col,
+      parent: currentBlock(),
+      children: [],
+    };
+    checkDuplicateName(node);
+    attach(node);
+    return cursor;
+  };
+
+  /** 处理 `end`（或 endif 等复合结束标记）。返回扫描到的下一个位置。 */
+  const handleEnd = (lineTokens: Token[], index: number, word: string): number => {
+    const first = lineTokens[index];
+    const expected = CLOSING_KEYWORDS.get(word);
+
+    if (stack.length === 0) {
+      issue('AM002', '多余的 end：没有匹配的 begin', 'error', first);
+      return index + 1;
+    }
+
+    let node = stack.pop()!;
+    if (expected) {
+      while (node.kind !== expected && stack.length > 0) {
+        node = stack.pop()!;
+      }
+      if (node.kind !== expected) {
+        issue('AM007', `end${expected} 缺少对应的 ${expected} 块`, 'warning', first);
+      }
+    }
+
+    node.endLine = first.endLine;
+    node.endCol = first.endCol;
+
+    const after = lineTokens[index + 1];
+
+    if (node.kind === 'model') {
+      modelClosed = true;
+      return after && after.text.toLowerCase() === 'model' ? index + 2 : index + 1;
+    }
+
+    if (
+      after &&
+      after.kind === 'identifier' &&
+      node.name &&
+      after.text.toLowerCase() !== node.name.toLowerCase() &&
+      after.text.toLowerCase() !== 'model'
+    ) {
+      issue(
+        'AM011',
+        `end 后的名称 “${after.text}” 与 begin 的 “${node.name}” 不一致`,
+        'warning',
+        after,
+        after.text.length,
+      );
+      return index + 2;
+    }
+
+    return index + 1;
+  };
+
   for (const lineNumber of lineNumbers) {
     const lineTokens = byLine.get(lineNumber)!;
-    const first = lineTokens[0];
-    const keyword = first.text.toLowerCase();
 
     if (modelClosed && !reportedAfterModel) {
-      issue('AM006', '模型已结束（end model），之后仍有内容', 'error', first);
+      issue('AM006', '模型已结束（end model），之后仍有内容', 'error', lineTokens[0]);
       reportedAfterModel = true;
     }
 
-    if (keyword === 'begin') {
-      const words = lineTokens
-        .slice(1)
-        .filter((token) => isWord(token))
-        .map((token) => token.text);
+    let index = 0;
+    while (index < lineTokens.length) {
+      const token = lineTokens[index];
+      const word = token.text.toLowerCase();
 
-      let kind: BlockKind = 'begin';
-      let typeName: string | undefined;
-      let name: string | undefined;
-
-      const firstWord = words[0]?.toLowerCase();
-      if (firstWord === 'model' && words[1]?.toLowerCase() === 'initialization') {
-        // `begin model initialization function`：模型初始化函数，不是模型外壳
-        kind = 'begin';
-        name = 'initialization';
-      } else if (firstWord === 'model') {
-        kind = 'model';
-        name = words[1];
-      } else if (firstWord === 'procedure') {
-        kind = 'procedure';
-        name = words[1];
-      } else {
-        const systemMatch = matchSystemType(words);
-        if (systemMatch) {
-          kind = 'system';
-          typeName = systemMatch.type;
-          let nameIndex = systemMatch.consumed;
-          // 兼容 `begin process system P` 这种把 "system" 也写出来的导出格式
-          if (words[nameIndex]?.toLowerCase() === 'system' && words[nameIndex + 1]) {
-            nameIndex += 1;
-          }
-          name = words[nameIndex];
-        } else {
-          // 逻辑块：`begin P_in arriving procedure`、`begin`（匿名块）等
-          kind = 'begin';
-          name = words[0];
-        }
-      }
-
-      const node: BlockNode = {
-        kind,
-        typeName,
-        name,
-        header: words.length > 0 ? words.join(' ').toLowerCase() : undefined,
-        line: first.line,
-        col: first.col,
-        parent: currentBlock(),
-        children: [],
-      };
-      checkDuplicateName(node);
-      attach(node);
-      continue;
-    }
-
-    if (keyword === 'end' || CLOSING_KEYWORDS.has(keyword)) {
-      const expected = CLOSING_KEYWORDS.get(keyword);
-      if (stack.length === 0) {
-        issue('AM002', '多余的 end：没有匹配的 begin', 'error', first);
+      if (word === 'begin') {
+        index = handleBegin(lineTokens, index);
         continue;
       }
 
-      let node = stack.pop()!;
-      if (expected) {
-        while (node.kind !== expected && stack.length > 0) {
-          node = stack.pop()!;
-        }
-        if (node.kind !== expected) {
-          issue('AM007', `end${expected} 缺少对应的 ${expected} 块`, 'warning', first);
-        }
+      if (word === 'end' || CLOSING_KEYWORDS.has(word)) {
+        index = handleEnd(lineTokens, index, word);
+        continue;
       }
 
-      node.endLine = first.endLine;
-      node.endCol = first.endCol;
-
-      if (node.kind === 'model') {
-        modelClosed = true;
-      } else {
-        const after = lineTokens[1];
-        if (
-          after &&
-          after.kind === 'identifier' &&
-          node.name &&
-          after.text.toLowerCase() !== node.name.toLowerCase() &&
-          after.text.toLowerCase() !== 'model'
-        ) {
-          issue(
-            'AM011',
-            `end 后的名称 “${after.text}” 与 begin 的 “${node.name}” 不一致`,
-            'warning',
-            after,
-            after.text.length,
-          );
-        }
+      if (word === 'else') {
+        // else / else if 都只是分支标记，不开启需要 end 的块
+        index += 1;
+        continue;
       }
-      continue;
-    }
 
-    if (keyword === 'else') {
-      // else / else if 都只是分支标记，不开启需要 end 的块
-      continue;
+      // 普通语句 / 声明 / 赋值：一直取到下一个块标记
+      const start = index;
+      while (index < lineTokens.length && !isMarker(lineTokens[index])) {
+        index += 1;
+      }
+      const segment = lineTokens.slice(start, index);
+      if (segment.length === 0) {
+        index += 1;
+        continue;
+      }
+      statements.push({
+        keyword: segment[0].text.toLowerCase(),
+        tokens: segment,
+        args: segment.slice(1),
+        line: segment[0].line,
+        col: segment[0].col,
+        block: currentBlock(),
+      });
     }
-
-    // 普通语句 / 声明 / 赋值
-    const statement: Statement = {
-      keyword,
-      tokens: lineTokens,
-      args: lineTokens.slice(1),
-      line: first.line,
-      col: first.col,
-      block: currentBlock(),
-    };
-    statements.push(statement);
   }
 
   for (const node of stack) {
     if (node.kind === 'if' || node.kind === 'while' || node.kind === 'for') {
-      issue('AM007', `${node.kind} 块未闭合（缺少 end）`, 'warning', {
-        kind: 'keyword',
-        text: node.kind,
-        line: node.line,
-        col: node.col,
-        endLine: node.line,
-        endCol: node.col + node.kind.length,
-      }, node.kind.length);
+      issue(
+        'AM007',
+        `${node.kind} 块未闭合（缺少 end）`,
+        'warning',
+        {
+          kind: 'keyword',
+          text: node.kind,
+          line: node.line,
+          col: node.col,
+          endLine: node.line,
+          endCol: node.col + node.kind.length,
+        },
+        node.kind.length,
+      );
     } else {
-      issue('AM003', 'begin 未闭合（缺少 end）', 'error', {
-        kind: 'keyword',
-        text: 'begin',
-        line: node.line,
-        col: node.col,
-        endLine: node.line,
-        endCol: node.col + 5,
-      }, 5);
+      issue(
+        'AM003',
+        'begin 未闭合（缺少 end）',
+        'error',
+        {
+          kind: 'keyword',
+          text: 'begin',
+          line: node.line,
+          col: node.col,
+          endLine: node.line,
+          endCol: node.col + 5,
+        },
+        5,
+      );
     }
   }
 

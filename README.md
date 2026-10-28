@@ -1,4 +1,4 @@
-# AutoMod Language Support
+﻿# AutoMod Language Support
 
 AutoMod 逻辑控制程序（`.m`）的 VS Code 语法高亮与静态检查。
 
@@ -6,7 +6,7 @@ AutoMod 逻辑控制程序（`.m`）的 VS Code 语法高亮与静态检查。
 
 - **语法高亮**：`begin`/`end` 逻辑块、系统类型（process、path mover、conveyor、AS/RS…）、块名、声明、关键字、字符串、注释、数字、运算符、内建函数。
 - **静态检查**：编辑/保存时自动运行，结果显示在 Problems 面板与编辑器波浪线上，状态栏显示问题数。
-- **编辑辅助**：`begin … end` 折叠、自动缩进、`!` 与 `/* */` 注释切换。
+- **编辑辅助**：`begin … end` 折叠、自动缩进、`//` 与 `/* */` 注释切换。
 
 ## 安装
 
@@ -14,15 +14,15 @@ AutoMod 逻辑控制程序（`.m`）的 VS Code 语法高亮与静态检查。
 
 | 安装包 | 适用版本 |
 |---|---|
-| `automod-language-0.1.3-vscode185.vsix` | VS Code **≥ 1.85** |
-| `automod-language-0.1.3-vscode174.vsix` | VS Code **1.74.x ~ 1.84.x**（含 1.74.2） |
+| `automod-language-0.1.4-vscode185.vsix` | VS Code **≥ 1.85** |
+| `automod-language-0.1.4-vscode174.vsix` | VS Code **1.74.x ~ 1.84.x**（含 1.74.2） |
 
 ```powershell
 # 1.74.2 的机器
-code --install-extension .\automod-language-0.1.3-vscode174.vsix
+code --install-extension .\automod-language-0.1.4-vscode174.vsix
 
 # 1.85 及以上的机器
-code --install-extension .\automod-language-0.1.3-vscode185.vsix
+code --install-extension .\automod-language-0.1.4-vscode185.vsix
 ```
 
 装完后执行 **Developer: Reload Window**。若已装过旧版本，加 `--force` 覆盖。
@@ -104,10 +104,10 @@ code --install-extension .\automod-language-0.1.3-vscode185.vsix
 
 ## 语法基准与已知限制
 
-本版语法已用真实 `.m` 逻辑文件（cs / cv / kc / pm 四个工程）校准，优先保证不误报：
+本版语法已用真实 `.m` 逻辑文件（cs / cv / kc / pm 四个工程）校准，并对照 AutoMod 12.6 官方 Syntax Help 补全了关键字、注释语法与块规则，摘要见 [docs/automod-syntax.md](docs/automod-syntax.md)。优先保证不误报：
 
 - 关键字大小写不敏感；
-- 同时接受 `!` 行注释与 `/* */` 块注释；
+- 同时接受 `//` 行注释与 `/* */` 块注释（与官方手册一致）；
 - `if` / `while` **不以 `end` 结束**，分组用 `begin … end`；
 - `begin` 允许匿名（只作为语句分组），不要求名称；
 - 逻辑块头部支持 `begin P_x arriving`、`begin P_x arriving procedure`、`begin model initialization function`；
@@ -128,8 +128,8 @@ npm run package    # 生成两个 VSIX（vscode185 / vscode174）
 `npm run package` 会先在 `dist/` 下按变体暂存（改 engines 与显示名），再分别调用 vsce，产物在仓库根目录：
 
 ```
-automod-language-0.1.3-vscode185.vsix   engines ^1.85.0
-automod-language-0.1.3-vscode174.vsix   engines ^1.74.0
+automod-language-0.1.4-vscode185.vsix   engines ^1.85.0
+automod-language-0.1.4-vscode174.vsix   engines ^1.74.0
 ```
 
 目录：

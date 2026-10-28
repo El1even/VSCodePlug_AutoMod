@@ -78,7 +78,7 @@ test('逻辑块名与声明着色', async () => {
 });
 
 test('注释、字符串、数字、内建函数着色', async () => {
-  const comment = '! note here';
+  const comment = '// note here';
   assert.equal(
     scopeOf(await tokenize(comment), comment, comment.indexOf('note')),
     'comment.line.automod',

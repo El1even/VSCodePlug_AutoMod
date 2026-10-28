@@ -1,5 +1,5 @@
-! 取自真实 AutoMod 逻辑文件的语法形态（内容为脱敏示例）
-! 覆盖：模型初始化函数、arriving procedure、匿名 begin 块、oneof、use、order、clone nlt
+// 取自真实 AutoMod 逻辑文件的语法形态（内容为脱敏示例）
+// 覆盖：模型初始化函数、arriving procedure、匿名 begin 块、oneof、use、order、clone nlt
 
 begin model initialization function
   open "report.txt" for writing save result as V_report

@@ -57,7 +57,7 @@ export function buildGrammar(): TextMateGrammar {
           },
           {
             name: 'comment.line.automod',
-            match: '!(?!=).*$',
+            match: '//.*$',
           },
         ],
       },

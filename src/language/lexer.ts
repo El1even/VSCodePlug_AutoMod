@@ -3,7 +3,6 @@ import {
   BLOCK_COMMENT_START,
   CLOSING_KEYWORDS,
   KEYWORD_SET,
-  LINE_COMMENT,
 } from './spec';
 
 export type TokenKind =
@@ -42,8 +41,8 @@ export interface LexResult {
   errors: LexError[];
 }
 
-const TWO_CHAR_OPERATORS = ['<>', '!=', '<=', '>=', '==', '->', '::'];
-const ONE_CHAR_OPERATORS = '+-*/%=<>^&|~!';
+const TWO_CHAR_OPERATORS = ['<>', '<=', '>=', '==', '->', '::'];
+const ONE_CHAR_OPERATORS = '+-*/%=<>^&|~';
 const PUNCTUATION = '()[],;:?.{}';
 
 const isDigit = (ch: string | undefined): boolean => ch !== undefined && ch >= '0' && ch <= '9';
@@ -138,8 +137,8 @@ export function tokenize(source: string): LexResult {
       continue;
     }
 
-    // 行注释：`!` 到行尾，但 `!=` 视为运算符
-    if (ch === LINE_COMMENT && text[i + 1] !== '=') {
+    // 行注释：`//` 到行尾（见手册 Writing comments in AutoMod code）
+    if (ch === '/' && text[i + 1] === '/') {
       while (i < n && text[i] !== '\r' && text[i] !== '\n') {
         step();
       }

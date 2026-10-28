@@ -13,12 +13,12 @@ test('关键字大小写不敏感，保留原文', () => {
   assert.equal(tokens[0].text, 'BEGIN');
 });
 
-test('! 是行注释，!= 是运算符', () => {
-  const { tokens, errors } = tokenize('! note\nif a != b then');
+test('// 是行注释，<> 是运算符', () => {
+  const { tokens, errors } = tokenize('// note\nif a <> b then');
   assert.equal(tokens[0].kind, 'comment');
   assert.equal(tokens[0].line, 1);
   const operators = tokens.filter((token) => token.kind === 'operator').map((token) => token.text);
-  assert.deepEqual(operators, ['!=']);
+  assert.deepEqual(operators, ['<>']);
   assert.equal(errors.length, 0);
 });
 

@@ -73,6 +73,40 @@ test('if/then/else 用 begin/end 分组时不误报（if 本身不需要 end）'
   assert.deepEqual(parse(source).issues, []);
 });
 
+test('then begin / do begin 同行写法', () => {
+  const source = wrap(
+    [
+      'begin process P',
+      'begin A',
+      'if x > 1 then begin',
+      'set a to 1',
+      'end',
+      'while x < 10 do begin',
+      'increment x by 1',
+      'end',
+      'end',
+      'end',
+    ].join('\n'),
+  );
+  assert.deepEqual(parse(source).issues, []);
+});
+
+test('do ... until 用 begin/end 分组', () => {
+  const source = wrap(
+    [
+      'begin process P',
+      'begin A',
+      'do begin',
+      'wait for 1 sec',
+      'end',
+      'until x > 3',
+      'end',
+      'end',
+    ].join('\n'),
+  );
+  assert.deepEqual(parse(source).issues, []);
+});
+
 test('兼容 begin process system P 写法', () => {
   const model = parse('begin model m\nbegin process system P\nend\nend model\n');
   assert.deepEqual(model.issues, []);
