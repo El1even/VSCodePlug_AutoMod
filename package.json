@@ -1,0 +1,143 @@
+{
+  "name": "automod-language",
+  "displayName": "AutoMod Language Support",
+  "description": "AutoMod 逻辑控制程序（.m）的语法高亮与静态检查",
+  "version": "0.1.2",
+  "publisher": "automod-local",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.74.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Linters"
+  ],
+  "keywords": [
+    "automod",
+    "simulation",
+    "mdl",
+    "discrete event simulation"
+  ],
+  "main": "./out/src/extension.js",
+  "scripts": {
+    "compile": "tsc -p .",
+    "gen:grammar": "node out/scripts/gen-grammar.js",
+    "build": "npm run compile && npm run gen:grammar",
+    "pretest": "npm run build",
+    "test": "node --test --test-isolation=none \"out/test/*.test.js\"",
+    "package": "npm run build && node out/scripts/package-variants.js"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "@types/vscode": "^1.74.0",
+    "@vscode/vsce": "^3.2.0",
+    "typescript": "~5.9.0",
+    "vscode-oniguruma": "^2.0.1",
+    "vscode-textmate": "^9.3.2"
+  },
+  "contributes": {
+    "languages": [
+      {
+        "id": "automod",
+        "aliases": [
+          "AutoMod",
+          "automod"
+        ],
+        "extensions": [
+          ".m",
+          ".mdl",
+          ".automod"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "automod",
+        "scopeName": "source.automod",
+        "path": "./syntaxes/automod.tmLanguage.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "automod.checkFile",
+        "title": "AutoMod: 重新检查当前模型"
+      },
+      {
+        "command": "automod.associateFile",
+        "title": "AutoMod: 将当前文件关联为 AutoMod 模型"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "automod.checkFile",
+          "when": "editorLangId == automod",
+          "group": "navigation"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "AutoMod",
+      "properties": {
+        "automod.diagnostics.enable": {
+          "type": "boolean",
+          "default": true,
+          "description": "启用 AutoMod 静态检查（保存或编辑时自动运行）。"
+        },
+        "automod.diagnostics.severity.structural": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "info",
+            "hint",
+            "none"
+          ],
+          "default": "error",
+          "description": "结构性检查（begin/end 配对、字符串闭合、重复块名等）的严重级别。"
+        },
+        "automod.diagnostics.severity.references": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "info",
+            "hint",
+            "none"
+          ],
+          "default": "warning",
+          "description": "引用性检查（move/wait/create 目标未声明等）的严重级别。"
+        },
+        "automod.diagnostics.severity.quality": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "info",
+            "hint",
+            "none"
+          ],
+          "default": "hint",
+          "description": "质量类检查（不可达代码、除零、空逻辑块等）的严重级别。"
+        },
+        "automod.diagnostics.rules": {
+          "type": "object",
+          "default": {},
+          "description": "逐条规则开关，例如 {\"AM201\": false}。",
+          "additionalProperties": {
+            "type": "boolean"
+          }
+        },
+        "automod.maxFileSizeKB": {
+          "type": "number",
+          "default": 2048,
+          "description": "超过该大小的模型文件跳过静态检查（KB）。"
+        }
+      }
+    }
+  },
+  "activationEvents": [
+    "onLanguage:automod"
+  ]
+}
