@@ -1,24 +1,28 @@
-! 典型的 AutoMod 逻辑控制程序：只有逻辑块，没有 begin model 外壳
-! 文件扩展名为 .m
+! 典型的 AutoMod 逻辑控制程序（.m）：只有逻辑块，没有 begin model 外壳
+! if 不需要 end，用 begin/end 分组
 
-begin P_arrive
-  move load to P_load
+begin P_arrive arriving procedure
+  move into Q_in
+  send to P_load
 end
 
-begin P_load
-  move load to P_process
-end
-
-begin P_process
+begin P_load arriving procedure
   if var_busy > 0 then
-    wait for 30 sec
+    begin
+      wait for 30 sec
+    end
   else
-    set var_busy = 1
-  end
-  move load to P_done
+    begin
+      set var_busy = 1
+    end
+  send to P_process
 end
 
-begin P_done
-  set var_busy = 0
+begin P_process arriving procedure
+  move into Q_process
+  wait to be ordered on OL_process
+end
+
+begin P_done arriving procedure
   stop
 end

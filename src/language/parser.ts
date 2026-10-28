@@ -191,17 +191,20 @@ export function parse(source: string): ParsedModel {
       let typeName: string | undefined;
       let name: string | undefined;
 
-      if (words[0]?.toLowerCase() === 'model') {
+      const firstWord = words[0]?.toLowerCase();
+      if (firstWord === 'model' && words[1]?.toLowerCase() === 'initialization') {
+        // `begin model initialization function`：模型初始化函数，不是模型外壳
+        kind = 'begin';
+        name = 'initialization';
+      } else if (firstWord === 'model') {
         kind = 'model';
         name = words[1];
-      } else if (words[0]?.toLowerCase() === 'procedure') {
+      } else if (firstWord === 'procedure') {
         kind = 'procedure';
         name = words[1];
       } else {
-        const parent = currentBlock();
-        const topLevel = !parent || parent.kind === 'model';
         const systemMatch = matchSystemType(words);
-        if (topLevel && systemMatch) {
+        if (systemMatch) {
           kind = 'system';
           typeName = systemMatch.type;
           let nameIndex = systemMatch.consumed;
@@ -210,19 +213,11 @@ export function parse(source: string): ParsedModel {
             nameIndex += 1;
           }
           name = words[nameIndex];
-        } else if (topLevel && words.length >= 2) {
-          kind = 'system';
-          typeName = words[0];
-          name = words[1];
-          issue('AM005', `未知的系统类型 “${words[0]}”`, 'warning', first, words[0].length);
         } else {
+          // 逻辑块：`begin P_in arriving procedure`、`begin`（匿名块）等
           kind = 'begin';
           name = words[0];
         }
-      }
-
-      if (!name) {
-        issue('AM009', 'begin 缺少名称', 'warning', first);
       }
 
       const node: BlockNode = {
@@ -283,40 +278,8 @@ export function parse(source: string): ParsedModel {
       continue;
     }
 
-    if (keyword === 'if' || keyword === 'while' || keyword === 'for') {
-      const last = lineTokens[lineTokens.length - 1].text.toLowerCase();
-      const opensBlock =
-        (keyword === 'if' && lineTokens.some((token) => token.text.toLowerCase() === 'then')) ||
-        ((keyword === 'while' || keyword === 'for') &&
-          lineTokens.some((token) => token.text.toLowerCase() === 'do')) ||
-        last === 'then' ||
-        last === 'do';
-
-      if (opensBlock) {
-        attach({
-          kind: keyword,
-          line: first.line,
-          col: first.col,
-          children: [],
-        });
-        continue;
-      }
-    }
-
     if (keyword === 'else') {
-      // `else if ... then` 仍然开启一个 if 块
-      const continuesIf =
-        lineTokens.some((token) => token.text.toLowerCase() === 'if') &&
-        lineTokens.some((token) => token.text.toLowerCase() === 'then');
-      if (continuesIf) {
-        attach({
-          kind: 'if',
-          line: first.line,
-          col: first.col,
-          children: [],
-        });
-        continue;
-      }
+      // else / else if 都只是分支标记，不开启需要 end 的块
       continue;
     }
 

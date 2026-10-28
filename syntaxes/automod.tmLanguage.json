@@ -107,7 +107,7 @@
     "declarations": {
       "patterns": [
         {
-          "match": "(?i:\\b(integer|real|string|boolean|process|queue|load|resource|variable|attribute|entity|table))\\s+((?!(?i:to|of|for|by|via|type|then|do|else|end|begin|and|or|not)\\b)[A-Za-z_$][A-Za-z0-9_$]*)",
+          "match": "^\\s*(?i:\\b(integer|real|string|boolean|process|queue|load|resource|variable|attribute|entity|table))\\s+((?!(?i:to|of|for|by|via|type|then|do|else|end|begin|and|or|not)\\b)[A-Za-z_$][A-Za-z0-9_$]*)",
           "captures": {
             "1": {
               "name": "storage.type.automod"
@@ -131,7 +131,7 @@
       "patterns": [
         {
           "name": "keyword.control.automod",
-          "match": "(?i)\\b(begin|end|model|procedure|move|to|via|travel|by|wait|for|until|set|inc|dec|create|of|type|call|return|stop|terminate|goto|exit|print|if|then|else|while|do|loop|repeat|otherwise|case|when|break|continue)\\b"
+          "match": "(?i)\\b(begin|end|model|initialization|function|procedure|arriving|departing|move|into|onto|to|from|on|via|travel|by|send|use|order|clone|nlt|wait|for|until|be|ordered|set|inc|dec|create|of|type|call|return|stop|terminate|goto|exit|print|open|close|writing|save|result|as|die|if|then|else|while|do|loop|repeat|otherwise|case|when|break|continue|and|or|not|true|false)\\b"
         },
         {
           "name": "keyword.operator.word.automod",
@@ -151,7 +151,7 @@
       "patterns": [
         {
           "name": "support.function.automod",
-          "match": "(?i)\\b(abs|min|max|round|trunc|floor|ceil|sqrt|exp|log|mod|random|uniform|normal|time|clock|dist|str|num)\\s*(?=\\()"
+          "match": "(?i)\\b(abs|min|max|round|trunc|floor|ceil|sqrt|exp|log|mod|random|uniform|normal|oneof|time|clock|dist|str|num)\\s*(?=\\()"
         }
       ]
     },

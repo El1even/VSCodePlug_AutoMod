@@ -49,14 +49,25 @@ export function referenceDiagnostics(
     return BUILTIN_SET.has(name.toLowerCase());
   };
 
-  // 逻辑文件（.m）里的 load 类型往往声明在模型文件中；本文件没有任何 load 声明时
-  // 无从判断，直接跳过，避免跨文件误报。
+  // 逻辑文件（.m）里的变量、队列、资源通常声明在模型文件中；文件里没有任何声明时
+  // 无从判断，跳过引用检查，避免跨文件误报。
+  const DECLARED_KINDS = new Set([
+    'process',
+    'queue',
+    'load',
+    'resource',
+    'variable',
+    'attribute',
+    'entity',
+    'table',
+  ]);
+  const hasDeclarations = symbols.entries.some((entry) => DECLARED_KINDS.has(entry.kind));
   const hasLoadDeclarations = symbols.entries.some((entry) => entry.kind === 'load');
 
   const seenDeclarations = new Set<string>();
 
   for (const statement of model.statements) {
-    if (statement.keyword === 'move' || statement.keyword === 'travel') {
+    if ((statement.keyword === 'move' || statement.keyword === 'travel') && hasDeclarations) {
       const toIndex = statement.args.findIndex((token) => token.text.toLowerCase() === 'to');
       const target = toIndex >= 0 ? statement.args[toIndex + 1] : undefined;
       if (isSimpleName(target) && !isKnown(target!.text)) {

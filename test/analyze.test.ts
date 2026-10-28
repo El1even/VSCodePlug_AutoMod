@@ -22,8 +22,8 @@ test('缺陷模型命中预期规则', () => {
   assert.equal(result.filter((code) => code === 'AM101').length, 2);
 });
 
-test('未知系统类型报 AM005', () => {
-  assert.ok(codes(fixture('unknown-type.m')).includes('AM005'));
+test('真实语法形态（初始化函数、arriving procedure、匿名块）没有诊断', () => {
+  assert.deepEqual(analyze(fixture('real-style.m')), []);
 });
 
 test('按规则关闭诊断', () => {
@@ -84,21 +84,20 @@ test('常见写法不误报（arriving 逻辑块、create、注释）', () => {
     '  load LoadA',
     '  queue Q_in',
     '',
-    '  begin P_in',
+    '  begin P_in arriving procedure',
     '    create 1 load of type LoadA to P_in',
     '  end',
     '',
-    '  begin P_in arriving',
-    '    move load to Q_in',
-    '  end',
-    '',
-    '  begin P_out',
+    '  begin P_out arriving procedure',
     '    if var_jobs >= 10 then',
-    '      wait for 30 sec',
+    '      begin',
+    '        wait for 30 sec',
+    '      end',
     '    else',
-    '      wait for 5 sec',
-    '    end',
-    '    move load to P_in',
+    '      begin',
+    '        wait for 5 sec',
+    '      end',
+    '    move to P_in',
     '  end',
     'end',
     'end model',

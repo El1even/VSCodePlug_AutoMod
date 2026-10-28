@@ -1,32 +1,28 @@
 begin model demo
-version: 1.0
-
 begin process P
   integer var_count
-  real var_cycle
-  load LoadA
   queue Q_buffer
+  load L_a
 
-  begin P_arrive
-    move load to P_station
-  end
-
-  begin P_station
+  begin P_arrive arriving procedure
+    move into Q_buffer
     if var_count > 10 then
-      move load to P_hold
+      begin
+        move to P_hold
+      end
     else
-      move load to P_done
-    end
+      begin
+        move to P_done
+      end
     inc var_count
   end
 
-  begin P_hold
+  begin P_hold arriving procedure
     wait for 5 sec
-    move load to P_done
+    move to P_done
   end
 
-  begin P_done
-    set var_cycle = 10 / 2
+  begin P_done arriving procedure
     stop
   end
 end

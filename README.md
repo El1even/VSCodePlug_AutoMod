@@ -14,15 +14,15 @@ AutoMod 逻辑控制程序（`.m`）的 VS Code 语法高亮与静态检查。
 
 | 安装包 | 适用版本 |
 |---|---|
-| `automod-language-0.1.2-vscode185.vsix` | VS Code **≥ 1.85** |
-| `automod-language-0.1.2-vscode174.vsix` | VS Code **1.74.x ~ 1.84.x**（含 1.74.2） |
+| `automod-language-0.1.3-vscode185.vsix` | VS Code **≥ 1.85** |
+| `automod-language-0.1.3-vscode174.vsix` | VS Code **1.74.x ~ 1.84.x**（含 1.74.2） |
 
 ```powershell
 # 1.74.2 的机器
-code --install-extension .\automod-language-0.1.2-vscode174.vsix
+code --install-extension .\automod-language-0.1.3-vscode174.vsix
 
 # 1.85 及以上的机器
-code --install-extension .\automod-language-0.1.2-vscode185.vsix
+code --install-extension .\automod-language-0.1.3-vscode185.vsix
 ```
 
 装完后执行 **Developer: Reload Window**。若已装过旧版本，加 `--force` 覆盖。
@@ -53,7 +53,8 @@ code --install-extension .\automod-language-0.1.2-vscode185.vsix
 
 引用类检查（`AM101`~`AM104`）只基于**当前文件**建立符号表。逻辑文件里引用的 queue / resource 往往声明在模型文件中，跨文件无法解析，因此：
 
-- 文件里没有任何 `load` 声明时，`AM102` 自动跳过；
+- 文件里没有任何声明时（纯逻辑文件），`AM101`/`AM102` 自动跳过；
+- 只有文件里出现 `load` 声明时，才检查 `create` 的 load 类型；
 - 其余引用检查如与你的工程习惯不符，可用 `automod.diagnostics.rules` 逐条关闭。
 
 ## 检查规则
@@ -66,11 +67,8 @@ code --install-extension .\automod-language-0.1.2-vscode185.vsix
 | AM002 | 多余的 `end` |
 | AM003 | `begin` 未闭合 |
 | AM004 | 同一作用域内重复的块名 |
-| AM005 | 未知的系统类型 |
 | AM006 | `end model` 之后仍有内容 |
-| AM007 | `if`/`while`/`for` 块未闭合 |
 | AM008 | 无法识别的字符 |
-| AM009 | `begin` 缺少名称 |
 | AM011 | `end` 后的名称与 `begin` 不一致 |
 
 引用性（默认 `warning`）：
@@ -106,13 +104,15 @@ code --install-extension .\automod-language-0.1.2-vscode185.vsix
 
 ## 语法基准与已知限制
 
-本版语法基于 AutoMod 公开教程与模型导出格式的通用子集，**尚未用真实 `.m` 文件校准**。优先保证不误报：
+本版语法已用真实 `.m` 逻辑文件（cs / cv / kc / pm 四个工程）校准，优先保证不误报：
 
 - 关键字大小写不敏感；
 - 同时接受 `!` 行注释与 `/* */` 块注释；
-- 引用检查只针对能确定判定的简单名字，内建函数与 `P.station` 形式一律放过；
-- 未识别的语句按普通语句处理，不报错；
-- 假定 `if`/`while`/`for` 同样以 `end` 结束；单行 `if … then <语句>` 且不写 `end` 的写法会被当作未闭合块。
+- `if` / `while` **不以 `end` 结束**，分组用 `begin … end`；
+- `begin` 允许匿名（只作为语句分组），不要求名称；
+- 逻辑块头部支持 `begin P_x arriving`、`begin P_x arriving procedure`、`begin model initialization function`；
+- 引用检查只在文件内出现声明时才启用，避免逻辑文件跨文件误报；
+- 未识别的语句按普通语句处理，不报错。
 
 若真实文件出现误报或漏报，只需调整 `src/language/spec.ts` 并重新 `npm run build`，词法与高亮语法会同步更新。
 
@@ -128,8 +128,8 @@ npm run package    # 生成两个 VSIX（vscode185 / vscode174）
 `npm run package` 会先在 `dist/` 下按变体暂存（改 engines 与显示名），再分别调用 vsce，产物在仓库根目录：
 
 ```
-automod-language-0.1.2-vscode185.vsix   engines ^1.85.0
-automod-language-0.1.2-vscode174.vsix   engines ^1.74.0
+automod-language-0.1.3-vscode185.vsix   engines ^1.85.0
+automod-language-0.1.3-vscode174.vsix   engines ^1.74.0
 ```
 
 目录：

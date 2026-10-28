@@ -111,8 +111,9 @@ export function buildGrammar(): TextMateGrammar {
         patterns: [
           {
             // 声明：integer var_count / queue Q1 / load LoadA
+            // 锚定行首，避免把 `set load color to red` 里的 load 当声明；
             // 名字前加否定前瞻，避免把 `load to P` 里的 to 当成声明名。
-            match: `(?i:\\b(${alternation(DECLARATION_KEYWORDS)}))\\s+((?!(?i:to|of|for|by|via|type|then|do|else|end|begin|and|or|not)\\b)${NAME})`,
+            match: `^\\s*(?i:\\b(${alternation(DECLARATION_KEYWORDS)}))\\s+((?!(?i:to|of|for|by|via|type|then|do|else|end|begin|and|or|not)\\b)${NAME})`,
             captures: {
               '1': { name: 'storage.type.automod' },
               '2': { name: 'variable.other.declaration.automod' },
@@ -132,45 +133,7 @@ export function buildGrammar(): TextMateGrammar {
         patterns: [
           {
             name: 'keyword.control.automod',
-            match: `(?i)\\b(${alternation([
-              'begin',
-              'end',
-              'model',
-              'procedure',
-              'move',
-              'to',
-              'via',
-              'travel',
-              'by',
-              'wait',
-              'for',
-              'until',
-              'set',
-              'inc',
-              'dec',
-              'create',
-              'of',
-              'type',
-              'call',
-              'return',
-              'stop',
-              'terminate',
-              'goto',
-              'exit',
-              'print',
-              'if',
-              'then',
-              'else',
-              'while',
-              'do',
-              'loop',
-              'repeat',
-              'otherwise',
-              'case',
-              'when',
-              'break',
-              'continue',
-            ])})\\b`,
+            match: `(?i)\\b(${alternation(CONTROL_KEYWORDS)})\\b`,
           },
           {
             name: 'keyword.operator.word.automod',

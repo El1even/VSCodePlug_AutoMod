@@ -28,23 +28,42 @@ test('重复块名报 AM004', () => {
   assert.ok(codes(source).includes('AM004'));
 });
 
-test('未知系统类型报 AM005，已知类型不报', () => {
-  assert.ok(codes('begin model m\nbegin stacker crane SC\nend\nend model\n').includes('AM005'));
+test('多词逻辑块头部不误报', () => {
+  const source = 'begin P_in arriving procedure\nmove into Q_in\nend\n';
+  const model = parse(source);
+  assert.deepEqual(model.issues, []);
+  assert.equal(model.blocks[0].name, 'P_in');
+  assert.equal(model.blocks[0].kind, 'begin');
+
+  // 未知的“系统类型”不再报错，按逻辑块处理
+  assert.deepEqual(codes('begin model m\nbegin stacker crane SC\nend\nend model\n'), []);
   assert.deepEqual(codes('begin model m\nbegin conveyor C\nend\nend model\n'), []);
+});
+
+test('model initialization function 不是模型外壳', () => {
+  const model = parse(
+    'begin model initialization function\nreturn true\nend\nbegin P_in arriving procedure\nend\n',
+  );
+  assert.deepEqual(model.issues, []);
+  assert.equal(model.modelClosed, false);
+  assert.equal(model.blocks[0].name, 'initialization');
 });
 
 test('end model 之后的内容报 AM006', () => {
   assert.ok(codes('begin model m\nend model\nleftover\n').includes('AM006'));
 });
 
-test('if/then/else/end 配对不误报', () => {
+test('if/then/else 用 begin/end 分组时不误报（if 本身不需要 end）', () => {
   const source = wrap(
     [
       'begin process P',
       'begin A',
       'if x > 1 then',
+      'begin',
       'wait for 1 sec',
+      'end',
       'else',
+      'begin',
       'wait for 2 sec',
       'end',
       'end',
